@@ -1,16 +1,20 @@
 const spawn = require('child_process').spawn;
 const chalk = require('chalk');
-const toPlatform = require('./utils/to-platform');
 const getCommitHash = require('./utils/commit-hash');
 
 console.log(chalk.blue(`Starting e2e tests...`));
 const exiting = false;
 const commitHash = getCommitHash();
 const cypress = spawn(
+  toPlatform('cypress'),
+  ['run'],
+  { stdio: [0, 1, 2] }
+);
+/* const cypress = spawn(
   toPlatform('currents'),
   ['run', '--parallel', '--record', '--key', 'Vb1U1Qin4kPB08Zx', '--headless', '--browser', 'chrome', '--ci-build-id', commitHash],
   { stdio: [0, 1, 2] }
-);
+); */
 
 /*const endProcessesBinded = endProcesses.bind(this);
 process.on('SIGINT', endProcessesBinded);
