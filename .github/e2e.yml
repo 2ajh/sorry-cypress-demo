@@ -1,6 +1,6 @@
 name: e2e tests
 on:
-  push
+  - pull_request
 
 jobs:
   prepare:
@@ -13,4 +13,53 @@ jobs:
         run: echo "::set-output name=value::sha-$GITHUB_SHA-time-$(date +"%s")"
 
       - name: Print unique ID`
-        run: echo "generated push push id ${{ steps.uuid.outputs.value }}"
+        run: echo "generated id ${{ steps.uuid.outputs.value }}"
+
+  e2e_tests:
+    needs: ['prepare']
+    runs-on: ubuntu-latest
+    env:
+      node-version: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        containers: [1, 2]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: Increase watchers
+        run: echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p
+
+      - name: Use Node.js 12.x
+        uses: actions/setup-node@v2
+        with:
+          node-version: '${{ env.node-version }}'
+          check-latest: true
+
+      - name: Restore NPM cache if exist
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-node-modules-${{ env.node-version }}
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ env.cache-name }}-
+      
+      - name: Cache Cypress binary
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-node-modules-${{ env.node-version }}
+        with:
+          path: ~/.cache/Cypress
+          key: cypress-${{ runner.os }}-cypress-${{ hashFiles('**/package.json') }}
+          restore-keys: |
+            cypress-${{ runner.os }}-cypress-
+
+      - name: Cypress run
+        uses: cypress-io/github-action@v2
+        continue-on-error: false
+        with:
+          wait-on-timeout: 301
+          command: npx currents run --parallel --record --key Vb1U1Qin4kPB08Zx --headless --browser chrome --ci-build-id ${{ needs.prepare.outputs.uuid }}
