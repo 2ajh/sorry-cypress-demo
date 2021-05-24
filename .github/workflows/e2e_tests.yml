@@ -1,9 +1,22 @@
 name: e2e tests
 on:
-  pull_request
+  - pull_request
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      uuid: ${{ steps.uuid.outputs.value }}
+    steps:
+      - name: Generate unique ID
+        id: uuid
+        run: echo "::set-output name=value::sha-$GITHUB_SHA-time-$(date +"%s")"
+
+      - name: Print unique ID`
+        run: echo "generated id ${{ steps.uuid.outputs.value }}"
+
   e2e_tests:
+    needs: ['prepare']
     runs-on: ubuntu-latest
     env:
       node-version: 12
@@ -33,10 +46,20 @@ jobs:
           key: ${{ runner.os }}-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-${{ env.cache-name }}-
+      
+      - name: Cache Cypress binary
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-node-modules-${{ env.node-version }}
+        with:
+          path: ~/.cache/Cypress
+          key: cypress-${{ runner.os }}-cypress-${{ hashFiles('**/package.json') }}
+          restore-keys: |
+            cypress-${{ runner.os }}-cypress-
 
       - name: Cypress run
         uses: cypress-io/github-action@v2
+        continue-on-error: false
         with:
-          wait-on-timeout: 310
-          command: npm run currents
-          
+          wait-on-timeout: 301
+          command: npx currents run --parallel --record --key Vb1U1Qin4kPB08Zx --headless --browser chrome --ci-build-id ${{ needs.prepare.outputs.uuid }}
